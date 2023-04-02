@@ -37,19 +37,23 @@ with gr.Blocks(theme=set_theme, analytics_enabled=False, css=advanced_css) as de
     gr.HTML(title_html)
     with gr.Row().style(equal_height=True):
         with gr.Column(scale=2):
-            with gr.Row(scale=9):
+            with gr.Row():
                 chatbot = gr.Chatbot()
                 chatbot.style(height=CHATBOT_HEIGHT)
                 history = gr.State([])
-            with gr.Row(scale=1):
-                with gr.Column(scale=9):
+            with gr.Row():
+                with gr.Column(scale=6):
                     txt = gr.Textbox(show_label=False, placeholder="Input question here.").style(container=False)
                 with gr.Column(scale=1):
-                    submitBtn = gr.Button("提交", variant="primary")                   
+                    # 备选 ✅⬆️✔️
+                    submitBtn = gr.Button("📤", variant="primary");            
         with gr.Column(scale=1):
             with gr.Row():
                 resetBtn = gr.Button("重置", variant="secondary"); resetBtn.style(size="sm")
                 stopBtn = gr.Button("停止", variant="secondary"); stopBtn.style(size="sm")
+            with gr.Row():
+                # with gr.Accordion("上传本地文件可供金融小助手解析使用。", open=True) as area_file_up:
+                file_upload = gr.Files(label="上传本地文件可供金融小助手解析使用，推荐上传压缩文件(zip, tar)", file_count="multiple")
             with gr.Row():
                 from check_proxy import check_proxy
                 status = gr.Markdown(f"Tip: 按Enter提交, 按Shift+Enter换行。当前模型: {LLM_MODEL} \n {check_proxy(proxies)}")
@@ -58,9 +62,6 @@ with gr.Blocks(theme=set_theme, analytics_enabled=False, css=advanced_css) as de
                     for k in functional:
                         variant = functional[k]["Color"] if "Color" in functional[k] else "secondary"
                         functional[k]["Button"] = gr.Button(k, variant=variant)
-                with gr.Row():
-                    with gr.Accordion("上传本地文件可供金融小助手解析使用。", open=True) as area_file_up:
-                        file_upload = gr.Files(label="任何文件, 但推荐上传压缩文件(zip, tar)", file_count="multiple")
             with gr.Accordion("展开SysPrompt & GPT参数", open=False):
                 system_prompt = gr.Textbox(show_label=True, placeholder=f"System Prompt", label="System prompt", value=initial_prompt)
                 top_p = gr.Slider(minimum=-0, maximum=1.0, value=1.0, step=0.01,interactive=True, label="Top-p (nucleus sampling)",)
@@ -71,10 +72,12 @@ with gr.Blocks(theme=set_theme, analytics_enabled=False, css=advanced_css) as de
     input_combo = [txt, top_p, temperature, chatbot, history, system_prompt]
     output_combo = [chatbot, history, status]
     predict_args = dict(fn=predict, inputs=input_combo, outputs=output_combo)
-    empty_txt_args = dict(fn=lambda: "", inputs=[], outputs=[txt]) # 用于在提交后清空输入栏
+    empty_txt_args = dict(fn=lambda x: gr.update(value=''), inputs=[], outputs=[txt]) # 用于在提交后清空输入栏
     # 提交按钮、重置按钮
-    cancel_handles.append(txt.submit(**predict_args)) #; txt.submit(**empty_txt_args) 在提交后清空输入栏
-    cancel_handles.append(submitBtn.click(**predict_args)) #; submitBtn.click(**empty_txt_args) 在提交后清空输入栏
+    cancel_handles.append(txt.submit(**predict_args))
+    cancel_handles.append(submitBtn.click(**predict_args))
+    submitBtn.click(**empty_txt_args) # 在提交后清空输入栏
+    txt.submit(**empty_txt_args) # 在提交后清空输入栏
     resetBtn.click(lambda: ([], [], "已重置"), None, output_combo)
     # 基础功能区的回调函数注册
     for k in functional:
