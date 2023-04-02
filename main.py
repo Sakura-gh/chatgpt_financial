@@ -72,7 +72,7 @@ with gr.Blocks(theme=set_theme, analytics_enabled=False, css=advanced_css) as de
     input_combo = [txt, top_p, temperature, chatbot, history, system_prompt]
     output_combo = [chatbot, history, status]
     predict_args = dict(fn=predict, inputs=input_combo, outputs=output_combo)
-    empty_txt_args = dict(fn=lambda x: gr.update(value=''), inputs=[], outputs=[txt]) # 用于在提交后清空输入栏
+    empty_txt_args = dict(fn=lambda: gr.update(value=''), inputs=[], outputs=[txt]) # 用于在提交后清空输入栏
     # 提交按钮、重置按钮
     cancel_handles.append(txt.submit(**predict_args))
     cancel_handles.append(submitBtn.click(**predict_args))
