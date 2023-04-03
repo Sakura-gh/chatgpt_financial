@@ -1,6 +1,13 @@
-import markdown, mdtex2html, threading, importlib, traceback, importlib, inspect, re
+import markdown, mdtex2html, threading, importlib, traceback, importlib, inspect, re, json
 from show_math import convert as convert_math
 from functools import wraps, lru_cache
+from langchain_tools import summerize_one_file, split2json, chatopenai_concurrently
+import asyncio
+from langchain.schema import (
+    AIMessage,
+    HumanMessage,
+    SystemMessage
+)
 
 def get_reduce_token_percent(text):
     try:
@@ -45,12 +52,20 @@ def predict_no_ui_but_counting_down(i_say, i_say_show_user, chatbot, top_p, temp
                 break
             except ConnectionAbortedError as token_exceeded_error:
                 # 尝试计算比例，尽可能多地保留文本
-                p_ratio, n_exceed = get_reduce_token_percent(str(token_exceeded_error))
-                if len(history) > 0:
-                    history = [his[     int(len(his)    *p_ratio):      ] for his in history if his is not None]
-                else:
-                    i_say = i_say[:     int(len(i_say)  *p_ratio)     ]
-                mutable[1] = f'警告，文本过长将进行截断，Token溢出数：{n_exceed}，截断比例：{(1-p_ratio):.0%}。'
+                # p_ratio, n_exceed = get_reduce_token_percent(str(token_exceeded_error))
+                # if len(history) > 0:
+                #     history = [his[     int(len(his)    *p_ratio):      ] for his in history if his is not None]
+                # else:
+                #     i_say = i_say[:     int(len(i_say)  *p_ratio)     ]
+                # mutable[1] = f'警告，文本过长将进行截断，Token溢出数：{n_exceed}，截断比例：{(1-p_ratio):.0%}。'
+                # 将文本分chunk，多次处理后集合
+                mutable[1] = f'文本较长，正在处理中，请您耐心等待'
+                sub_summerized = summerize_one_file(i_say)
+                # 递归调用
+                mt(sub_summerized, history=history)
+
+                break
+
             except TimeoutError as e:
                 mutable[0] = '[Local Message] 请求超时。'
                 raise TimeoutError
@@ -271,15 +286,54 @@ def on_file_uploaded(files, chatbot, txt):
         shutil.copy(file.name, f'private_upload/{time_tag}/{file_origin_name}')
         err_msg += extract_archive(f'private_upload/{time_tag}/{file_origin_name}',
                         dest_dir=f'private_upload/{time_tag}/{file_origin_name}.extract')
-    moved_files = [fp for fp in glob.glob('private_upload/**/*', recursive=True)]
+    moved_files = [fp for fp in glob.glob(f'private_upload/{time_tag}/**/*.pdf', recursive=True)] # 这里是此次对话已上传的所有pdf，包括解压后的 TODO:再包含txt等格式
     txt = f'private_upload/{time_tag}'
     moved_files_str = '\t\n\n'.join(moved_files)
     chatbot.append(['我上传了文件，请查收',
                     f'[Local Message] 收到以下文件: \n\n{moved_files_str}'+
                     f'\n\n调用路径参数已自动修正到: \n\n{txt}'+
                     f'\n\n现在您点击任意实验功能时，以上文件将被作为输入参数'+err_msg])
+    json_files = asyncio.run(split2json(moved_files))# 录入变成json
+    all_chunks = json_files2json_chunk_content(json_files)
+
+    #对每个chunk做summary，这里有两个选择：openai_concurrently或chatopenai_concurrently
+    batch_messages=[
+        [[SystemMessage(content="You are a helpful financial assistant that summarize a part of financial report"),
+          HumanMessage(content="Summerize the followed passages from a financial report" + chunk_content)]] for chunk_content in all_chunks.values()
+    ]
+    outputs = asyncio.run(chatopenai_concurrently(batch_messages))
+    summaries = {k:output.generations[0][0].text for k,output in zip(all_chunks.keys(), outputs)}
+    json_chunk_summary2json_files(summaries, json_files)
     return chatbot, txt
 
+def json_files2json_chunk_content(json_files):
+    '读取各个json里面的内容content，存到字典all_chunks里'
+    all_chunks = {}
+    for j,json_path in enumerate(json_files):
+        with open(json_path, 'r') as file:
+            json_dict = json.load(file)
+        content = json_dict['content']
+        len_list = json_dict['chunk_lens']
+        start_indices = [sum(len_list[:i]) for i in range(len(len_list))]
+        end_indices = start_indices[1:] + [len(content)]
+
+        chunks = [content[start:end] for start, end in zip(start_indices, end_indices)]
+        for c,chunk in enumerate(chunks):
+            all_chunks.update({f'j{j}c{c}':chunk})
+    return all_chunks
+
+def json_chunk_summary2json_files(summaries, json_files):
+    all_keys = summaries.keys()
+    for j,json_path in enumerate(json_files):
+        with open(json_path, 'r') as file:
+            json_dict = json.load(file)
+        keys = [key for key in all_keys if int(key[1:-1].split('c')[0]) == j]
+        keys = sorted(keys)
+        json_dict.update({"chunk_summary": [summaries[key] for key in keys]})
+        with open(json_path, 'w') as file:
+            file.write(json.dumps(json_dict))
+
+        
 
 def on_report_generated(files, chatbot):
     from toolbox import find_recent_files

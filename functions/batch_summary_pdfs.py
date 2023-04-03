@@ -68,10 +68,10 @@ def parse_PDF(file_manifest, project_folder, top_p, temperature, chatbot, histor
             file_content = clean_text(file_content)
             print(file_content)
 
-        prefix = '''作为一名金融工作者，你的任务是阅读所提供的专家访谈、研报等文本的内容，并抓住核心内容写一个简短的总结，
+        prefix = '''作为一名金融工作者，你的任务是阅读所提供的专家访谈、研报等文本的内容，并抓住核心内容写一个简短的总结，\\
                     接下来请你逐文件分析下面的论文文件，概括其内容''' if index==0 else ""
         i_say = prefix + f'请对下面的文章片段用中文做一个概述，文件名是{os.path.relpath(fp, project_folder)}，文章内容是 ```{file_content}```'
-        i_say_show_user = prefix + f'[{index}/{len(file_manifest)}] 请对下面的文章片段做一个概述: {os.path.abspath(fp)}'
+        i_say_show_user = prefix + f'[{index}/{len(file_manifest)}] 请对下面的文章片段做一个概述: {os.path.relpath(fp, "./private_upload")}'
         chatbot.append((i_say_show_user, "[Local Message] waiting gpt response."))
         print('[1] yield chatbot, history')
         yield chatbot, history, '正常'
@@ -108,7 +108,7 @@ def parse_PDF(file_manifest, project_folder, top_p, temperature, chatbot, histor
 
 
 @CatchException
-def batch_summary_pdfs(txt, top_p, temperature, chatbot, history, systemPromptTxt, WEB_PORT):
+def batch_summary_pdfs(txt, top_p, temperature, chatbot, history, systemPromptTxt, WEB_PORT):# TODO:总感觉这里的输入逻辑不是很好，应该把前缀去掉。之后加一个功能是选某些文件总结或提问
     import glob, os
 
     # 基本信息：功能、贡献者
@@ -139,7 +139,7 @@ def batch_summary_pdfs(txt, top_p, temperature, chatbot, history, systemPromptTx
         yield chatbot, history, '正常'
         return
 
-    # 搜索需要处理的文件清单
+    # 搜索需要处理的文件清单 TODO:增加对doc、docx、ppt的支持（可能要更换分词方式）
     file_manifest = [f for f in glob.glob(f'{project_folder}/**/*.pdf', recursive=True)] # + \
                     # [f for f in glob.glob(f'{project_folder}/**/*.tex', recursive=True)] + \
                     # [f for f in glob.glob(f'{project_folder}/**/*.cpp', recursive=True)] + \
