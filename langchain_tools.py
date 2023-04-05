@@ -9,9 +9,10 @@ from langchain.schema import (
     HumanMessage,
     SystemMessage
 )
+import asyncio
+from langchain.llms import OpenAI
 
 import os # TODO: delete
-os.environ['OPENAI_API_KEY']="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"
 
 
 
@@ -40,8 +41,7 @@ def summerize_one_file(origin_text):
     return sub_summerized
 
 
-import asyncio
-from langchain.llms import OpenAI
+
 
 async def openai_concurrently(contents):
     '''用于异步调用openai llm

@@ -1,7 +1,7 @@
 import markdown, mdtex2html, threading, importlib, traceback, importlib, inspect, re, json
 from show_math import convert as convert_math
 from functools import wraps, lru_cache
-from langchain_tools import summerize_one_file, split2json, chatopenai_concurrently
+from langchain_tools import summerize_one_file, split2json, chatopenai_concurrently, openai_concurrently
 import asyncio
 from langchain.schema import (
     AIMessage,
@@ -296,12 +296,19 @@ def on_file_uploaded(files, chatbot, txt):
     json_files = asyncio.run(split2json(moved_files))# 录入变成json
     all_chunks = json_files2json_chunk_content(json_files)
 
-    #对每个chunk做summary，这里有两个选择：openai_concurrently或chatopenai_concurrently
-    batch_messages=[
-        [[SystemMessage(content="You are a helpful financial assistant that summarize a part of financial report"),
-          HumanMessage(content="Summerize the followed passages from a financial report" + chunk_content)]] for chunk_content in all_chunks.values()
-    ]
-    outputs = asyncio.run(chatopenai_concurrently(batch_messages))
+    #对每个chunk做summary，这里有两个选择：openai_concurrently或chatopenai_concurrently; chatgpt api目前有20条/分钟的限制，不建议使用
+    chat_sub_summary = get_conf('CHAT_SUB_SUMMARY')
+    if chat_sub_summary:
+        batch_messages=[
+            [[SystemMessage(content="You are a helpful financial assistant that summarize a part of financial report"),
+            HumanMessage(content="Summerize the followed passages from a financial report" + chunk_content)]] for chunk_content in all_chunks.values()
+        ]
+        outputs = asyncio.run(chatopenai_concurrently(batch_messages))
+    else:
+        batch_instructs=[
+            ['Please summarize following passage, as a part of financial report:' + chunk_content] for chunk_content in all_chunks.values()
+        ]
+        outputs = asyncio.run(openai_concurrently(batch_instructs))
     summaries = {k:output.generations[0][0].text for k,output in zip(all_chunks.keys(), outputs)}
     json_chunk_summary2json_files(summaries, json_files)
     return chatbot, txt
@@ -319,7 +326,7 @@ def json_files2json_chunk_content(json_files):
 
         chunks = [content[start:end] for start, end in zip(start_indices, end_indices)]
         for c,chunk in enumerate(chunks):
-            all_chunks.update({f'j{j}c{c}':chunk})
+            all_chunks.update({f'j{j}c{c}':chunk}) # 例如j0c3表示第0号文件中的三号chunk
     return all_chunks
 
 def json_chunk_summary2json_files(summaries, json_files):
@@ -370,7 +377,7 @@ def get_conf(*args):
     for arg in args:
         r = read_single_conf_with_lru_cache(arg)
         res.append(r)
-    return res
+    return res[0] if len(res)==1 else res
 
 def clear_line_break(txt):
     txt = txt.replace('\n', ' ')

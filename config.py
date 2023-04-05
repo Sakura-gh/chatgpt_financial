@@ -19,6 +19,10 @@ if USE_PROXY:
 else:
     proxies = None
 
+# 金融对话工具的设置
+
+#使用chatGPT作为最底层总结的工具，否则使用GPT3.
+CHAT_SUB_SUMMARY = False
 
 # [step 3]>> 以下配置可以优化体验，但大部分场合下并不需要修改
 # 对话窗的高度
