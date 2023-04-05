@@ -68,8 +68,7 @@ def parse_PDF(file_manifest, project_folder, top_p, temperature, chatbot, histor
             file_content = clean_text(file_content)
             print(file_content)
 
-        prefix = '''作为一名金融工作者，你的任务是阅读所提供的专家访谈、研报等文本的内容，并抓住核心内容写一个简短的总结，\\
-                    接下来请你逐文件分析下面的论文文件，概括其内容''' if index==0 else ""
+        prefix = '''作为一名金融工作者，你的任务是阅读所提供的专家访谈、研报等文本的内容，并抓住核心内容写一个简短的总结，接下来请你逐文件分析下面的论文文件，概括其内容''' if index==0 else ""
         i_say = prefix + f'请对下面的文章片段用中文做一个概述，文件名是{os.path.relpath(fp, project_folder)}，文章内容是 ```{file_content}```'
         i_say_show_user = prefix + f'[{index}/{len(file_manifest)}] 请对下面的文章片段做一个概述: {os.path.relpath(fp, "./private_upload")}'
         chatbot.append((i_say_show_user, "[Local Message] waiting gpt response."))

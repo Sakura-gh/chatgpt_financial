@@ -1,4 +1,4 @@
-import os; os.environ['no_proxy'] = '*' # 避免代理网络产生意外污染
+import os; #os.environ['no_proxy'] = '*' # 避免代理网络产生意外污染
 import gradio as gr
 from predict import predict
 from toolbox import format_io, find_free_port, on_file_uploaded, on_report_generated, get_conf
@@ -46,7 +46,7 @@ with gr.Blocks(theme=set_theme, analytics_enabled=False, css=advanced_css) as de
                     txt = gr.Textbox(show_label=False, placeholder="Input question here.").style(container=False)
                 with gr.Column(scale=1):
                     # 备选 ✅⬆️✔️
-                    submitBtn = gr.Button("📤", variant="primary");            
+                    submitBtn = gr.Button("确定", variant="primary");            
         with gr.Column(scale=1):
             with gr.Row():
                 resetBtn = gr.Button("重置", variant="secondary"); resetBtn.style(size="sm")
@@ -101,4 +101,4 @@ def auto_opentab_delay():
 
 auto_opentab_delay()
 demo.title = "ChatGPT 金融小助手"
-demo.queue(concurrency_count=CONCURRENT_COUNT).launch(server_name="0.0.0.0", share=True, server_port=PORT, auth=AUTHENTICATION)
+demo.queue(concurrency_count=CONCURRENT_COUNT).launch(server_name="0.0.0.0", share=False, server_port=PORT, auth=AUTHENTICATION)

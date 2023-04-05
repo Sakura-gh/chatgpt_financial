@@ -65,7 +65,9 @@ def predict_no_ui_but_counting_down(i_say, i_say_show_user, chatbot, top_p, temp
                 mt(sub_summerized, history=history)
 
                 break
-
+                # TODO: 将sub summary交给chat作总结，再输给用户
+                # TODO: 保证history的统一（看history不要乱掉）
+                
             except TimeoutError as e:
                 mutable[0] = '[Local Message] 请求超时。'
                 raise TimeoutError
@@ -272,7 +274,7 @@ def find_recent_files(directory):
     return recent_files
 
 
-def on_file_uploaded(files, chatbot, txt):
+def on_file_uploaded(files, chatbot, txt):# TODO: 时间精确到0.00001秒，避免冲突
     if len(files) == 0: return chatbot, txt
     import shutil, os, time, glob
     from toolbox import extract_archive

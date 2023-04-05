@@ -57,7 +57,7 @@ async def openai_concurrently(contents):
     # 异步运行并整合输出
     return await asyncio.gather(*tasks) 
 
-async def chatopenai_concurrently(batch_messages):
+async def chatopenai_concurrently(batch_messages):# TODO:加入超过20/分钟限制时的报错处理
     '''用于异步调用openai chat llm
     异步调用示例：output = asyncio.run(chatopenai_concurrently([
                                     [[SystemMessage(content="You are a helpful assistant that translates English to French."),
