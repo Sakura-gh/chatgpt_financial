@@ -60,9 +60,9 @@ def predict_no_ui_but_counting_down(i_say, i_say_show_user, chatbot, top_p, temp
                 # mutable[1] = f'警告，文本过长将进行截断，Token溢出数：{n_exceed}，截断比例：{(1-p_ratio):.0%}。'
                 # 将文本分chunk，多次处理后集合
                 mutable[1] = f'文本较长，正在处理中，请您耐心等待'
+                # 对过长的输入进行分块处理，并迭代调用mt函数，继续进行概括
                 sub_summerized = summerize_one_file(i_say)
-                # 递归调用
-                mt(sub_summerized, history=history)
+                mutable[0] = mt(sub_summerized, history=history)
 
                 break
                 # TODO: 将sub summary交给chat作总结，再输给用户
@@ -74,6 +74,10 @@ def predict_no_ui_but_counting_down(i_say, i_say_show_user, chatbot, top_p, temp
             except Exception as e:
                 mutable[0] = f'[Local Message] 异常：{str(e)}.'
                 raise RuntimeError(f'[Local Message] 异常：{str(e)}.')
+        if mutable[1] == '文本较长，正在处理中，请您耐心等待':
+            # 文本过长而发生过概括的情况
+            print("Summarized......Long Input")
+            mutable[1] = ''
     # 创建新线程发出http请求
     thread_name = threading.Thread(target=mt, args=(i_say, history)); thread_name.start()
     # 原来的线程则负责持续更新UI，实现一个超时倒计时，并等待新线程的任务完成
